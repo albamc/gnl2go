@@ -306,10 +306,16 @@ func FromProtoNum(pnum U16Type) NulStringType {
 }
 
 type Dest struct {
-	IP     string
-	Weight int32
-	Port   uint16
-	AF     uint16
+	IP           string
+	Weight       int32
+	Port         uint16
+	AF           uint16
+	Method       uint32
+	UThresh      uint32
+	LThresh      uint32
+	ActiveConn   uint32
+	InactiveConn uint32
+	PersistConn  uint32
 }
 
 func (d *Dest) IsEqual(od *Dest) bool {
@@ -345,17 +351,44 @@ func (d *Dest) InitFromAttrList(list map[string]SerDes) error {
 		return fmt.Errorf("no dst PORT in attr list: %#v\n", list)
 	}
 	d.Port = uint16(*p)
+	m, ok := list["FWD_METHOD"].(*U32Type)
+	if ok {
+		d.Method = uint32(*m)
+	}
+	ut, ok := list["U_THRESH"].(*U32Type)
+	if ok {
+		d.UThresh = uint32(*ut)
+	}
+	lt, ok := list["L_THRESH"].(*U32Type)
+	if ok {
+		d.LThresh = uint32(*lt)
+	}
+	ac, ok := list["ACTIVE_CONNS"].(*U32Type)
+	if ok {
+		d.ActiveConn = uint32(*ac)
+	}
+	ic, ok := list["INACT_CONNS"].(*U32Type)
+	if ok {
+		d.InactiveConn = uint32(*ic)
+	}
+	pc, ok := list["PERSIST_CONNS"].(*U32Type)
+	if ok {
+		d.PersistConn = uint32(*pc)
+	}
 	return nil
 }
 
 type Service struct {
-	Proto  uint16
-	VIP    string
-	Port   uint16
-	Sched  string
-	FWMark uint32
-	AF     uint16
-	Flags  []byte
+	Proto   uint16
+	VIP     string
+	Port    uint16
+	Sched   string
+	FWMark  uint32
+	AF      uint16
+	Flags   []byte
+	Timeout uint32
+	Netmask uint32
+	PEName  string
 }
 
 func (s *Service) IsEqual(os Service) bool {
@@ -387,6 +420,18 @@ func (s *Service) InitFromAttrList(list map[string]SerDes) error {
 	s.Sched = string(*sched)
 	if flags, exists := list["FLAGS"]; exists {
 		s.Flags = []byte(*flags.(*BinaryType))
+	}
+	to, ok := list["TIMEOUT"].(*U32Type)
+	if ok {
+		s.Timeout = uint32(*to)
+	}
+	nm, ok := list["NETMASK"].(*U32Type)
+	if ok {
+		s.Netmask = uint32(*nm)
+	}
+	pn, ok := list["PE_NAME"].(*NulStringType)
+	if ok {
+		s.PEName = string(*pn)
 	}
 	return nil
 }
