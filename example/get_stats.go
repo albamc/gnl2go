@@ -22,5 +22,14 @@ func main() {
 		}
 		fmt.Printf("\n")
 	}
+	ddata, _ := ipvs.GetDestStatsBrief()
+	for k, v := range ddata {
+		fmt.Println(k)
+		stats := v.GetStats()
+		for nk, nv := range stats {
+			fmt.Printf("%v : %v   ", nk, nv)
+		}
+		fmt.Printf("\n")
+	}
 	fmt.Println("done")
 }

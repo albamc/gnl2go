@@ -378,6 +378,10 @@ func (d *Dest) InitFromAttrList(list map[string]SerDes) error {
 	return nil
 }
 
+func (d *Dest) ToString() string {
+	return strings.Join([]string{d.IP, strconv.FormatUint(uint64(d.Port), 10)}, ":")
+}
+
 type Service struct {
 	Proto   uint16
 	VIP     string
@@ -759,6 +763,43 @@ func (ipvs *IpvsClient) GetAllStatsBrief() (map[string]StatsIntf, error) {
 		svc.InitFromAttrList(svcAttrList.Amap)
 		sstat := GetStatsFromAttrList(svcAttrList)
 		statsMap[svc.ToString()] = sstat
+	}
+	return statsMap, nil
+}
+
+func (ipvs *IpvsClient) GetDestStatsBrief() (map[string]StatsIntf, error) {
+	statsMap := make(map[string]StatsIntf)
+	msg, err := ipvs.mt.InitGNLMessageStr("GET_SERVICE", MATCH_ROOT_REQUEST)
+	if err != nil {
+		return nil, err
+	}
+	sresps, err := ipvs.Sock.Query(msg)
+	if err != nil {
+		return nil, err
+	}
+	for _, sresp := range sresps {
+		var svc Service
+		svcAttrList := sresp.GetAttrList("SERVICE")
+		svc.InitFromAttrList(svcAttrList.(*AttrListType).Amap)
+		destReq, err := ipvs.mt.InitGNLMessageStr("GET_DEST", MATCH_ROOT_REQUEST)
+		if err != nil {
+			return nil, err
+		}
+		svcAttrListDef, _ := ATLName2ATL["IpvsServiceAttrList"]
+		svcAttrListType := CreateAttrListType(svcAttrListDef)
+		svcAttrListType.Set(svcAttrList.(*AttrListType).Amap)
+		destReq.AttrMap["SERVICE"] = &svcAttrListType
+		dresps, err := ipvs.Sock.Query(destReq)
+		if err != nil {
+			return nil, err
+		}
+		for _, dresp := range dresps {
+			var dst Dest
+			dstAttrList := dresp.GetAttrList("DEST").(*AttrListType)
+			dst.InitFromAttrList(dstAttrList.Amap)
+			dstat := GetStatsFromAttrList(dstAttrList)
+			statsMap[svc.ToString() + "-" + dst.ToString()] = dstat
+		}
 	}
 	return statsMap, nil
 }
